@@ -1,0 +1,31 @@
+name: Publish to Open VSX
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install vsce and ovsx
+        run: npm install -g @vscode/vsce ovsx
+
+      - name: Package VSIX
+        run: vsce package --allow-missing-repository
+
+      - name: Publish to Open VSX
+        run: ovsx publish *.vsix -p ${{ secrets.OVSX_TOKEN }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: '*.vsix'

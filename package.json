@@ -1,0 +1,114 @@
+{
+  "name": "oz-calendar-vscode",
+  "displayName": "DateWise Calendar",
+  "description": "Sidebar calendar with date-based file explorer, Google Calendar integration, and quick command bar",
+  "version": "1.3.1",
+  "publisher": "rockuen",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rockuen/oz-calendar-vscode"
+  },
+  "keywords": [
+    "calendar",
+    "sidebar",
+    "daily notes",
+    "obsidian",
+    "google calendar",
+    "file explorer",
+    "productivity"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "oz-calendar",
+          "title": "Calendar",
+          "icon": "$(calendar)"
+        }
+      ]
+    },
+    "views": {
+      "oz-calendar": [
+        {
+          "type": "webview",
+          "id": "ozCalendar.calendarView",
+          "name": "Calendar"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "ozCalendar.focusCalendar",
+        "title": "Calendar: Focus"
+      },
+      {
+        "command": "ozCalendar.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ozCalendar.openSettings",
+        "title": "Settings",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ozCalendar.refresh",
+          "when": "view == ozCalendar.calendarView",
+          "group": "navigation"
+        },
+        {
+          "command": "ozCalendar.openSettings",
+          "when": "view == ozCalendar.calendarView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DateWise Calendar",
+      "properties": {
+        "ozCalendar.obsidianVault": {
+          "type": "string",
+          "default": "",
+          "description": "Obsidian vault name. Leave empty to use workspace folder name."
+        },
+        "ozCalendar.openMarkdownIn": {
+          "type": "string",
+          "default": "obsidian",
+          "enum": ["obsidian", "editor"],
+          "enumDescriptions": [
+            "Open .md/.canvas files in Obsidian",
+            "Open .md/.canvas files in the IDE editor"
+          ],
+          "description": "Where to open Markdown and Canvas files."
+        },
+        "ozCalendar.externalExtensions": {
+          "type": "string",
+          "default": "xlsx,xls,csv,png,jpg,jpeg,gif,svg,webp,bmp,pdf,zip,docx,pptx,hwp",
+          "description": "Comma-separated file extensions to open with OS default app (e.g. xlsx,png,pdf)."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "ozCalendar.focusCalendar",
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b"
+      }
+    ]
+  }
+}
