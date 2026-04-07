@@ -284,6 +284,22 @@ class CalendarViewProvider {
             } else if (msg.type === 'revealInFinder') {
                 const dirPath = path.dirname(msg.path);
                 this._openWithOS(dirPath);
+            } else if (msg.type === 'deleteFile') {
+                const fileName = path.basename(msg.path);
+                vscode.window.showWarningMessage(
+                    `Delete "${fileName}"?`,
+                    { modal: true, detail: msg.path },
+                    'Delete'
+                ).then((choice) => {
+                    if (choice === 'Delete') {
+                        const fileUri = vscode.Uri.file(msg.path);
+                        vscode.workspace.fs.delete(fileUri, { useTrash: true }).then(() => {
+                            this._postMessage('commandSaved', { time: '', label: 'delete', text: fileName });
+                        }, (err) => {
+                            vscode.window.showErrorMessage(`Failed to delete: ${err.message}`);
+                        });
+                    }
+                });
             } else if (msg.type === 'gogLogin') {
                 resetGogStatusCache();
                 const terminal = vscode.window.createTerminal('Google Login');
@@ -601,6 +617,8 @@ body {
 }
 .ctx-menu-item:hover { background: var(--hover); }
 .ctx-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-menu-danger { color: #f38ba8; }
+.ctx-menu-danger:hover { background: rgba(243,139,168,0.15); }
 
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; padding: 0 8px; }
 .cal-dow { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); padding: 4px 0; }
@@ -743,6 +761,8 @@ body {
     <div class="ctx-menu-item" data-action="reveal">\u{1F50D} Reveal in Finder</div>
     <div class="ctx-menu-sep"></div>
     <div class="ctx-menu-item" data-action="copy">\u{1F4CB} Copy Path</div>
+    <div class="ctx-menu-sep"></div>
+    <div class="ctx-menu-item ctx-menu-danger" data-action="delete">\u{1F5D1} Delete File</div>
 </div>
 <div class="cmd-bar">
     <div class="cmd-suggestions" id="cmdSuggestions"></div>
@@ -1282,6 +1302,7 @@ ctxMenu.addEventListener('click', (e) => {
     if (action === 'open') openFile(ctxTargetPath);
     else if (action === 'reveal') vscode.postMessage({ type: 'revealInFinder', path: ctxTargetPath });
     else if (action === 'copy') vscode.postMessage({ type: 'copyPath', path: ctxTargetPath });
+    else if (action === 'delete') vscode.postMessage({ type: 'deleteFile', path: ctxTargetPath });
     ctxMenu.classList.remove('show');
     ctxTargetPath = null;
 });

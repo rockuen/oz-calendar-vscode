@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0] - 2026-04-07
+
+### Added
+- Right-click context menu **Delete File** option on file list
+- Confirmation dialog before deletion (modal warning with file path)
+- Files are moved to OS trash (recoverable), not permanently deleted
+- Toast notification on successful deletion
+
 ## [1.3.1] - 2026-03-31
 
 ### Fixed
