@@ -6,6 +6,21 @@ const fs = require('fs');
 // ── 날짜 유틸 ──
 
 function extractDateFromFilename(filename) {
+    const mISO = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (mISO) {
+        const mm = parseInt(mISO[2], 10);
+        const dd = parseInt(mISO[3], 10);
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return mISO[0];
+    }
+    const m8 = filename.match(/(?:^|[^0-9])(\d{4})(\d{2})(\d{2})(?=[^0-9]|$)/);
+    if (m8) {
+        const yyyy = parseInt(m8[1], 10);
+        const mm = parseInt(m8[2], 10);
+        const dd = parseInt(m8[3], 10);
+        if (yyyy >= 1970 && yyyy <= 2099 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+            return `${m8[1]}-${m8[2]}-${m8[3]}`;
+        }
+    }
     const m6 = filename.match(/^(\d{6})(?=[^0-9])/);
     if (m6) {
         const yy = parseInt(m6[1].substring(0, 2), 10);
@@ -16,8 +31,6 @@ function extractDateFromFilename(filename) {
             return `${year}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
         }
     }
-    const mISO = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (mISO) return mISO[0];
     return null;
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1] - 2026-04-27
+
+### Fixed
+- Date extraction now matches 8-digit `YYYYMMDD` pattern anywhere in filename (e.g. `report_20260427.csv`, `매출현황_20260427.xlsx`)
+- Previously only 6-digit `YYMMDD` at filename start or hyphenated `YYYY-MM-DD` anywhere were matched
+- Adjacent-digit boundary check prevents false positives on arbitrary numeric strings (e.g. `2026042712345.csv` → no match)
+- Match priority: `YYYY-MM-DD` (ISO) > `YYYYMMDD` (8-digit, anywhere) > `YYMMDD` (6-digit, filename start)
+
 ## [1.4.0] - 2026-04-07
 
 ### Added

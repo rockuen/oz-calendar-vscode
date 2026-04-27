@@ -2,7 +2,7 @@
   "name": "oz-calendar-vscode",
   "displayName": "DateWise Calendar",
   "description": "Sidebar calendar with date-based file explorer, Google Calendar integration, and quick command bar",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "publisher": "rockuen",
   "license": "MIT",
   "icon": "icon.png",
