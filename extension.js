@@ -1360,10 +1360,29 @@ function activate(context) {
         })
     );
 
+    // v1.4.3: VSCode keybindings are static (manifest-only) so we cannot accept
+    // a keystroke from settings.json and rebind on the fly. The next best thing
+    // is to send the user one click away from the standard Keyboard Shortcuts
+    // editor, pre-filtered to this extension.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('ozCalendar.changeShortcut', () => {
+            vscode.commands.executeCommand(
+                'workbench.action.openGlobalKeybindings',
+                '@ext:rockuen.oz-calendar-vscode'
+            );
+        })
+    );
+
     // Status Bar 달력 아이콘 (하단 우측, 클릭으로 토글)
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.text = '$(calendar) Calendar';
-    statusBarItem.tooltip = 'Calendar 사이드바 토글 (Ctrl+Alt+B)';
+    const shortcutLabel = process.platform === 'darwin' ? 'Cmd+Shift+B' : 'Ctrl+Shift+B';
+    const tooltipMd = new vscode.MarkdownString(undefined, true);
+    tooltipMd.isTrusted = true;
+    tooltipMd.appendMarkdown(`**Calendar 사이드바 토글**  \`${shortcutLabel}\`\n\n`);
+    tooltipMd.appendMarkdown('[$(keyboard) 단축키 변경하기](command:ozCalendar.changeShortcut)');
+    tooltipMd.supportThemeIcons = true;
+    statusBarItem.tooltip = tooltipMd;
     statusBarItem.command = 'ozCalendar.focusCalendar';
     statusBarItem.show();
     context.subscriptions.push(statusBarItem);

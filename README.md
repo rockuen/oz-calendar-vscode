@@ -44,8 +44,14 @@ Quick input bar at the bottom for fast actions:
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Alt+B` (Win/Linux) | Toggle calendar sidebar |
-| `Cmd+Option+B` (Mac) | Toggle calendar sidebar |
+| `Ctrl+Shift+B` (Win/Linux) | Toggle calendar sidebar |
+| `Cmd+Shift+B` (Mac) | Toggle calendar sidebar |
+
+> Note: this collides with VSCode's default *Run Build Task* binding. If you rely on build tasks, use the **Customize Shortcut** option below to remap.
+
+### Customize Shortcut
+
+Click the **단축키 변경하기** link inside the status bar `$(calendar) Calendar` tooltip, or run **"Calendar: 단축키 변경"** from the Command Palette (`Ctrl+Shift+P`). VS Code's standard Keyboard Shortcuts editor opens filtered to this extension — change `Calendar: Focus` to whatever binding suits your workflow.
 
 ## Installation
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.3] - 2026-05-07
+
+### Added
+- **`Calendar: 단축키 변경` command + status bar tooltip link.** VSCode does not let an extension dynamically register a keybinding entered into its `settings.json` — keybindings are manifest-only. Instead, this release adds a one-click path to the *standard* Keyboard Shortcuts editor, pre-filtered to this extension. Two surfaces:
+  - Command Palette (`Ctrl+Shift+P` → `Calendar: 단축키 변경`).
+  - Status bar `$(calendar) Calendar` tooltip — now a markdown tooltip with a `$(keyboard) 단축키 변경하기` link. Hover the icon and click straight through to the rebind page.
+- New command id: `ozCalendar.changeShortcut`.
+
+### Changed
+- Status bar tooltip now reads the actual current shortcut (`Ctrl+Shift+B` on Win/Linux, `Cmd+Shift+B` on Mac) instead of the stale `Ctrl+Alt+B` text that was left over after the v1.4.2 keybinding move. README "Keyboard Shortcuts" table updated to match, with a build-task collision note + new "Customize Shortcut" section pointing at the new command.
+
 ## [1.4.2] - 2026-05-07
 
 ### Changed
