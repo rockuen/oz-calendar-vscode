@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.2] - 2026-05-07
+
+### Changed
+- **Calendar focus shortcut moved to `Ctrl+Shift+B` / `Cmd+Shift+B`** (was `Ctrl+Alt+B` / `Cmd+Alt+B`). Note this collides with VSCode's default *Run Build Task* binding — workflows that don't use build tasks gain a more reachable shortcut; workflows that do can override the keybinding back via user `keybindings.json`.
+
 ## [1.4.1] - 2026-04-27
 
 ### Fixed
