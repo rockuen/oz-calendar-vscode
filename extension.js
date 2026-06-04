@@ -2,6 +2,8 @@ const vscode = require('vscode');
 const path = require('path');
 const { execFile } = require('child_process');
 const fs = require('fs');
+const os = require('os');
+const https = require('https');
 
 // ── 날짜 유틸 ──
 
@@ -83,16 +85,31 @@ const KEEP_CALENDARS = [
     '162851ed8239957135c8f6434739992275e805d2b0cf4e25486f40ce8fea9e36@group.calendar.google.com',
     'fa80c623d67a6d1b2b4f12a709bb8a6b94e5ba1ba198fbe89ea1d6bc27f8c958@group.calendar.google.com',
 ];
-const GOG_PATH = (() => {
-    if (process.platform === 'win32') {
-        return (process.env.HOME || process.env.USERPROFILE || '').replace(/\\/g, '/') + '/AppData/Local/gogcli/gog.exe';
+// gogcli 바이너리 경로 해석: 설정(ozCalendar.gogPath) > 표준 후보 > 기본 설치 경로
+let _resolvedGogPath = null;
+function resolveGogPath() {
+    if (_resolvedGogPath) return _resolvedGogPath;
+    // 1) 사용자 설정 우선
+    try {
+        const configured = vscode.workspace.getConfiguration('ozCalendar').get('gogPath');
+        if (configured && configured.trim()) {
+            _resolvedGogPath = configured.trim();
+            return _resolvedGogPath;
+        }
+    } catch {}
+    const home = (process.env.HOME || process.env.USERPROFILE || os.homedir() || '').replace(/\\/g, '/');
+    // 2) 플랫폼별 표준 후보 탐색 (사용자 PATH에 없는 ~/.gogcli/bin 포함)
+    const candidates = process.platform === 'win32'
+        ? [((process.env.LOCALAPPDATA || (home + '/AppData/Local')).replace(/\\/g, '/')) + '/gogcli/gog.exe']
+        : ['/opt/homebrew/bin/gog', '/usr/local/bin/gog', home + '/.gogcli/bin/gog'];
+    for (const p of candidates) {
+        try { if (p && fs.existsSync(p)) { _resolvedGogPath = p; return _resolvedGogPath; } } catch {}
     }
-    // macOS: Homebrew Apple Silicon → /opt/homebrew/bin, Intel → /usr/local/bin
-    for (const p of ['/opt/homebrew/bin/gog', '/usr/local/bin/gog']) {
-        try { if (fs.existsSync(p)) return p; } catch {}
-    }
-    return '/usr/local/bin/gog';
-})();
+    // 3) 기본 설치 경로 (자동 설치 시 배치되는 위치)
+    _resolvedGogPath = gogInstallDest();
+    return _resolvedGogPath;
+}
+function resetGogPathCache() { _resolvedGogPath = null; }
 
 const GOG_ENV = { ...process.env, ZONEINFO: process.platform === 'win32' ? 'C:/Program Files/Git/mingw64/share/zoneinfo' : undefined };
 
@@ -102,7 +119,7 @@ function checkGogStatus() {
     if (_gogStatusCache) return Promise.resolve(_gogStatusCache);
     return new Promise((resolve) => {
         // 1) 바이너리 존재 확인
-        const gogPath = GOG_PATH;
+        const gogPath = resolveGogPath();
         try {
             if (!fs.existsSync(gogPath)) {
                 _gogStatusCache = { status: 'notInstalled' };
@@ -140,11 +157,194 @@ function resetGogStatusCache() {
     _gogStatusCache = null;
 }
 
+// ---- gogcli 자동 설치 / 경로 지정 (v1.4.4) ----
+
+// 자동 설치 시 바이너리를 배치하는 표준 경로
+function gogInstallDest() {
+    const home = (process.env.HOME || process.env.USERPROFILE || os.homedir() || '').replace(/\\/g, '/');
+    if (process.platform === 'win32') {
+        const localAppData = (process.env.LOCALAPPDATA || (home + '/AppData/Local')).replace(/\\/g, '/');
+        return path.join(localAppData, 'gogcli', 'gog.exe');
+    }
+    return path.join(home, '.gogcli', 'bin', 'gog');
+}
+
+// GitHub API JSON GET (302 redirect follow + User-Agent 필수, redirect 상한·timeout)
+function ghGetJson(url, depth = 0) {
+    return new Promise((resolve, reject) => {
+        if (depth > 5) { reject(new Error('리다이렉트가 너무 많습니다.')); return; }
+        const req = https.get(url, { headers: { 'User-Agent': 'oz-calendar-vscode', 'Accept': 'application/vnd.github+json' } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                res.resume();
+                ghGetJson(res.headers.location, depth + 1).then(resolve, reject);
+                return;
+            }
+            if (res.statusCode !== 200) {
+                res.resume();
+                reject(new Error('GitHub API ' + res.statusCode));
+                return;
+            }
+            let data = '';
+            res.setEncoding('utf8');
+            res.on('data', (c) => { data += c; });
+            res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+        });
+        req.on('error', reject);
+        req.setTimeout(30000, () => req.destroy(new Error('네트워크 시간 초과')));
+    });
+}
+
+// 현재 플랫폼/아키텍처에 맞는 릴리스 자산 선택
+function pickGogAsset(assets) {
+    const plat = process.platform;
+    const arch = process.arch;
+    const platKeys = plat === 'win32' ? ['windows', 'win'] : plat === 'darwin' ? ['darwin', 'macos', 'mac', 'apple'] : ['linux'];
+    const archKeys = arch === 'arm64' ? ['arm64', 'aarch64'] : ['x86_64', 'amd64', 'x64'];
+    const archives = (assets || []).filter(a => /\.(zip|tar\.gz|tgz)$/i.test(a.name || ''));
+    const lc = (a) => (a.name || '').toLowerCase();
+    let best = archives.find(a => platKeys.some(k => lc(a).includes(k)) && archKeys.some(k => lc(a).includes(k)));
+    if (!best) best = archives.find(a => platKeys.some(k => lc(a).includes(k)));
+    if (!best && archives.length === 1) best = archives[0];
+    return best || null;
+}
+
+// 파일 다운로드 (302 redirect follow, redirect 상한·timeout)
+function downloadFile(url, dest, depth = 0) {
+    return new Promise((resolve, reject) => {
+        if (depth > 5) { reject(new Error('리다이렉트가 너무 많습니다.')); return; }
+        const file = fs.createWriteStream(dest);
+        const req = https.get(url, { headers: { 'User-Agent': 'oz-calendar-vscode' } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                res.resume();
+                file.close(() => { fs.unlink(dest, () => downloadFile(res.headers.location, dest, depth + 1).then(resolve, reject)); });
+                return;
+            }
+            if (res.statusCode !== 200) {
+                res.resume();
+                file.close(() => fs.unlink(dest, () => reject(new Error('다운로드 실패 ' + res.statusCode))));
+                return;
+            }
+            res.pipe(file);
+            file.on('finish', () => file.close(() => resolve()));
+        });
+        req.on('error', (e) => { try { file.close(); } catch {} fs.unlink(dest, () => reject(e)); });
+        req.setTimeout(60000, () => req.destroy(new Error('다운로드 시간 초과')));
+    });
+}
+
+// 압축 해제: .zip은 Windows=Expand-Archive / Unix=unzip, .tar.gz는 tar
+function extractArchive(archivePath, destDir) {
+    return new Promise((resolve, reject) => {
+        let cmd, args;
+        if (/\.zip$/i.test(archivePath)) {
+            if (process.platform === 'win32') {
+                cmd = 'powershell';
+                args = ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${archivePath.replace(/'/g, "''")}' -DestinationPath '${destDir.replace(/'/g, "''")}' -Force`];
+            } else {
+                cmd = 'unzip';
+                args = ['-o', archivePath, '-d', destDir];
+            }
+        } else if (/\.(tar\.gz|tgz)$/i.test(archivePath)) {
+            cmd = 'tar';
+            args = ['-xzf', archivePath, '-C', destDir];
+        } else {
+            reject(new Error('지원하지 않는 압축 형식: ' + path.basename(archivePath)));
+            return;
+        }
+        execFile(cmd, args, { timeout: 60000 }, (err) => err ? reject(err) : resolve());
+    });
+}
+
+// 압축 해제 트리에서 gog 바이너리 탐색 (gog/gogcli/gog.exe/gogcli.exe)
+function findGogBinary(dir) {
+    const names = process.platform === 'win32' ? ['gog.exe', 'gogcli.exe'] : ['gog', 'gogcli'];
+    const stack = [dir];
+    while (stack.length) {
+        const cur = stack.pop();
+        let entries;
+        try { entries = fs.readdirSync(cur, { withFileTypes: true }); } catch { continue; }
+        for (const ent of entries) {
+            const full = path.join(cur, ent.name);
+            if (ent.isDirectory()) stack.push(full);
+            else if (names.includes(ent.name)) return full;
+        }
+    }
+    return null;
+}
+
+// 자동 설치: 최신 릴리스 → 다운로드 → 해제 → 표준 경로 배치 → gog auth login
+async function installGogcli() {
+    await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: 'gogcli 설치', cancellable: false },
+        async (progress) => {
+            try {
+                progress.report({ message: '최신 릴리스 조회 중...' });
+                const release = await ghGetJson('https://api.github.com/repos/openclaw/gogcli/releases/latest');
+                const asset = pickGogAsset(release.assets);
+                if (!asset) throw new Error('현재 플랫폼에 맞는 릴리스 자산을 찾지 못했습니다.');
+                if (!/^[\w.\-]+$/.test(asset.name)) throw new Error('릴리스 자산명이 안전하지 않습니다: ' + asset.name);
+                progress.report({ message: `다운로드: ${asset.name}` });
+                const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gogcli-'));
+                const archivePath = path.join(tmpDir, asset.name);
+                await downloadFile(asset.browser_download_url, archivePath);
+                progress.report({ message: '압축 해제 중...' });
+                const extractDir = path.join(tmpDir, 'extracted');
+                fs.mkdirSync(extractDir, { recursive: true });
+                await extractArchive(archivePath, extractDir);
+                const binSrc = findGogBinary(extractDir);
+                if (!binSrc) throw new Error('압축 해제된 파일에서 gog 바이너리를 찾지 못했습니다.');
+                const destPath = gogInstallDest();
+                fs.mkdirSync(path.dirname(destPath), { recursive: true });
+                fs.copyFileSync(binSrc, destPath);
+                if (process.platform !== 'win32') {
+                    try { fs.chmodSync(destPath, 0o755); }
+                    catch (e) { vscode.window.showWarningMessage(`실행 권한 설정 실패 — 수동으로 chmod +x 가 필요할 수 있습니다: ${destPath}`); }
+                }
+                // 설정에 절대경로 명시 저장 (PATH에 없을 수 있으므로)
+                try { await vscode.workspace.getConfiguration('ozCalendar').update('gogPath', destPath, vscode.ConfigurationTarget.Global); } catch {}
+                resetGogPathCache();
+                resetGogStatusCache();
+                try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+                vscode.window.showInformationMessage(`gogcli 설치 완료: ${destPath} — 터미널에서 Google 로그인을 진행하세요.`);
+                const terminal = vscode.window.createTerminal('Google Login');
+                terminal.show();
+                terminal.sendText(`"${destPath}" auth login`);
+                vscode.commands.executeCommand('ozCalendar.refresh');
+            } catch (e) {
+                vscode.window.showErrorMessage(`gogcli 설치 실패: ${e.message}. '경로 지정' 또는 수동 설치를 시도하세요.`);
+            }
+        }
+    );
+}
+
+// 경로 직접 지정: 파일 다이얼로그 → Global 설정 저장 → 캐시 reset → refresh
+async function setGogPathInteractive() {
+    const picked = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        title: 'gogcli 실행 파일 선택',
+        openLabel: '선택',
+    });
+    if (!picked || !picked.length) return;
+    const p = picked[0].fsPath;
+    try {
+        await vscode.workspace.getConfiguration('ozCalendar').update('gogPath', p, vscode.ConfigurationTarget.Global);
+    } catch (e) {
+        vscode.window.showErrorMessage(`설정 저장 실패: ${e.message}`);
+        return;
+    }
+    resetGogPathCache();
+    resetGogStatusCache();
+    vscode.window.showInformationMessage(`gogcli 경로 설정 완료: ${p}`);
+    vscode.commands.executeCommand('ozCalendar.refresh');
+}
+
 function fetchGoogleEvents(fromDate, toDate, account) {
     return new Promise((resolve) => {
         if (!account) { resolve({}); return; }
         const args = ['cal', 'list', '--from', fromDate, '--to', toDate, '--all', '--all-pages', '--max', '200', '--json', '--account', account];
-        execFile(GOG_PATH, args, {
+        execFile(resolveGogPath(), args, {
             timeout: 15000,
             env: GOG_ENV,
         }, (err, stdout, stderr) => {
@@ -317,7 +517,11 @@ class CalendarViewProvider {
                 resetGogStatusCache();
                 const terminal = vscode.window.createTerminal('Google Login');
                 terminal.show();
-                terminal.sendText(`"${GOG_PATH}" auth login`);
+                terminal.sendText(`"${resolveGogPath()}" auth login`);
+            } else if (msg.type === 'installGogcli') {
+                installGogcli();
+            } else if (msg.type === 'setGogPath') {
+                setGogPathInteractive();
             }
         });
     }
@@ -1138,7 +1342,9 @@ function render() {
         html += '<div class="event-section"><div class="event-section-header">\\u{1F4C5} Schedule</div>';
         html += '<div class="gog-status-msg"><span>\\u{1F4E6} gogcli \\uBBF8\\uC124\\uCE58</span>';
         html += '<div class="gog-hint">Google Calendar \\uC5F0\\uB3D9\\uC744 \\uC704\\uD574 gogcli\\uB97C \\uC124\\uCE58\\uD558\\uC138\\uC694.</div>';
-        html += '<a class="auth-btn" href="https://github.com/nicegui-kr/gogcli" target="_blank">\\u{1F517} \\uC124\\uCE58 \\uAC00\\uC774\\uB4DC</a>';
+        html += '<button class="auth-btn" onclick="vscode.postMessage({type:\\u0027installGogcli\\u0027})">\\u{1F680} \\uC790\\uB3D9 \\uC124\\uCE58</button>';
+        html += '<button class="auth-btn" onclick="vscode.postMessage({type:\\u0027setGogPath\\u0027})">\\u{1F4C1} \\uACBD\\uB85C \\uC9C0\\uC815</button>';
+        html += '<a class="auth-btn" href="https://github.com/openclaw/gogcli" target="_blank">\\u{1F4D6} \\uAC00\\uC774\\uB4DC</a>';
         html += '</div></div>';
     } else if (gogStatus === 'noAccount') {
         html += '<div class="event-section"><div class="event-section-header">\\u{1F4C5} Schedule</div>';
@@ -1370,6 +1576,25 @@ function activate(context) {
                 'workbench.action.openGlobalKeybindings',
                 '@ext:rockuen.oz-calendar-vscode'
             );
+        })
+    );
+
+    // v1.4.4: gogcli 원클릭 설치 / 경로 직접 지정
+    context.subscriptions.push(
+        vscode.commands.registerCommand('ozCalendar.installGogcli', () => installGogcli())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('ozCalendar.setGogPath', () => setGogPathInteractive())
+    );
+
+    // gogPath 설정 변경 시 경로/상태 캐시 무효화 후 새로고침
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('ozCalendar.gogPath')) {
+                resetGogPathCache();
+                resetGogStatusCache();
+                vscode.commands.executeCommand('ozCalendar.refresh');
+            }
         })
     );
 

@@ -16,7 +16,7 @@ A sidebar calendar extension for VS Code / Antigravity that displays date-based 
 - Markdown/Canvas files open in Obsidian, text files in editor, binaries in default app
 
 ### Google Calendar Integration
-- View Google Calendar events directly in the sidebar (requires [gogcli](https://github.com/nicholasgasior/gogcli))
+- View Google Calendar events directly in the sidebar (requires [gogcli](https://github.com/openclaw/gogcli))
 - Filter to show only selected calendars
 - Events displayed with time and title under each date
 
@@ -78,16 +78,18 @@ By default, the calendar appears in the left sidebar. To move it to the right:
 
 ### Google Calendar Setup (optional)
 
-Google Calendar events require [gogcli](https://github.com/nicholasgasior/gogcli). Without it, all other features work normally.
+Google Calendar events require [gogcli](https://github.com/openclaw/gogcli). Without it, all other features work normally.
+
+> **Tip (v1.4.4):** Install gogcli in one click from the calendar sidebar — when gogcli is missing, the Schedule panel shows **🚀 자동 설치** (auto-download & configure) and **📁 경로 지정** (point to an existing binary).
 
 **macOS:**
 ```bash
-brew install nicholasgasior/tools/gogcli
+brew install openclaw/tools/gogcli
 gog auth login
 ```
 
 **Windows:**
-1. Download `gog.exe` from [gogcli releases](https://github.com/nicholasgasior/gogcli/releases)
+1. Download `gog.exe` from [gogcli releases](https://github.com/openclaw/gogcli/releases)
 2. Place in `%LOCALAPPDATA%/gogcli/gog.exe`
 3. Run `gog.exe auth login`
 

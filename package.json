@@ -2,7 +2,7 @@
   "name": "oz-calendar-vscode",
   "displayName": "DateWise Calendar",
   "description": "Sidebar calendar with date-based file explorer, Google Calendar integration, and quick command bar",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "publisher": "rockuen",
   "license": "MIT",
   "icon": "icon.png",
@@ -67,6 +67,14 @@
         "command": "ozCalendar.changeShortcut",
         "title": "Calendar: 단축키 변경",
         "icon": "$(keyboard)"
+      },
+      {
+        "command": "ozCalendar.installGogcli",
+        "title": "Calendar: Google 연동(gogcli) 자동 설치"
+      },
+      {
+        "command": "ozCalendar.setGogPath",
+        "title": "Calendar: gogcli 경로 직접 지정"
       }
     ],
     "menus": {
@@ -105,6 +113,11 @@
           "type": "string",
           "default": "xlsx,xls,csv,png,jpg,jpeg,gif,svg,webp,bmp,pdf,zip,docx,pptx,hwp",
           "description": "Comma-separated file extensions to open with OS default app (e.g. xlsx,png,pdf)."
+        },
+        "ozCalendar.gogPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the gogcli binary. Leave empty to auto-detect (settings > standard candidates > default install path)."
         }
       }
     },

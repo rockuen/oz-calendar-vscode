@@ -1,0 +1,8 @@
+.github/**
+.omc/**
+.git/**
+.gitignore
+.vscodeignore
+*.vsix
+**/.DS_Store
+**/Thumbs.db
