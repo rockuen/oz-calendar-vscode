@@ -13,7 +13,7 @@ A sidebar calendar extension for VS Code / Antigravity that displays date-based 
 ### Date-Based File Explorer
 - Click a date to see all files matching `YYMMDD` or `YYYY-MM-DD` filename patterns
 - Files grouped by type: Notes (.md, .canvas, .txt), Data (.xlsx, .csv, .json), Images, Others
-- Markdown/Canvas files open in Obsidian, text files in editor, binaries in default app
+- Markdown/Canvas files open in Obsidian, other files via your VS Code default editor association (custom editors honored), binaries in OS default app
 
 ### Google Calendar Integration
 - View Google Calendar events directly in the sidebar (requires [gogcli](https://github.com/openclaw/gogcli))

@@ -560,30 +560,29 @@ class CalendarViewProvider {
                 const obsidianUri = `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(relativePath)}`;
                 this._openWithOS(obsidianUri);
             } else {
+                // VSCode 기본 에디터 연결(workbench.editorAssociations)을 따른다.
+                // 사용자가 설치/지정한 커스텀 마크다운 에디터로 열리며,
+                // 텍스트 에디터로 열릴 때만 line selection이 적용된다.
                 const uri = vscode.Uri.file(filePath);
-                const lineNum = Math.max(0, (line || 1) - 1);
-                vscode.workspace.openTextDocument(uri).then((doc) => {
-                    const range = line ? new vscode.Range(lineNum, 0, lineNum, 0) : undefined;
-                    vscode.window.showTextDocument(doc, { preview: false, selection: range });
-                });
+                const range = line ? new vscode.Range(Math.max(0, line - 1), 0, Math.max(0, line - 1), 0) : undefined;
+                this._openWithDefaultEditor(uri, range, filePath);
             }
             return;
         }
 
-        // Other text files → editor (with line support)
+        // Other files → VSCode 기본 에디터 연결을 따른다 (라인 점프는 텍스트 에디터일 때만 적용).
         const uri = vscode.Uri.file(filePath);
-        if (line) {
-            const lineNum = Math.max(0, line - 1);
-            vscode.workspace.openTextDocument(uri).then((doc) => {
-                const range = new vscode.Range(lineNum, 0, lineNum, 0);
-                vscode.window.showTextDocument(doc, { preview: false, selection: range });
-            });
-        } else {
-            vscode.workspace.openTextDocument(uri).then(
-                (doc) => vscode.window.showTextDocument(doc, { preview: false }),
-                () => this._openWithOS(filePath)
-            );
-        }
+        const range = line ? new vscode.Range(Math.max(0, line - 1), 0, Math.max(0, line - 1), 0) : undefined;
+        this._openWithDefaultEditor(uri, range, filePath);
+    }
+
+    // VSCode의 기본 에디터 연결을 존중해 파일을 연다.
+    // vscode.open 명령은 workbench.editorAssociations / 등록된 커스텀 에디터를 따르므로,
+    // 사용자가 지정한 에디터(또는 추후 개발할 확장)로 열린다. 실패 시 OS 기본 앱으로 폴백.
+    _openWithDefaultEditor(uri, range, filePath) {
+        Promise.resolve(
+            vscode.commands.executeCommand('vscode.open', uri, { preview: false, selection: range })
+        ).then(undefined, () => this._openWithOS(filePath));
     }
 
     async _handleSlashCommand(command, text) {

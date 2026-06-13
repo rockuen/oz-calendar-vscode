@@ -2,7 +2,7 @@
   "name": "oz-calendar-vscode",
   "displayName": "DateWise Calendar",
   "description": "Sidebar calendar with date-based file explorer, Google Calendar integration, and quick command bar",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "publisher": "rockuen",
   "license": "MIT",
   "icon": "icon.png",
@@ -105,9 +105,9 @@
           "enum": ["obsidian", "editor"],
           "enumDescriptions": [
             "Open .md/.canvas files in Obsidian",
-            "Open .md/.canvas files in the IDE editor"
+            "Open in VS Code using your default editor association (workbench.editorAssociations) — respects custom editors you've installed"
           ],
-          "description": "Where to open Markdown and Canvas files."
+          "description": "Where to open Markdown and Canvas files. 'editor' follows VS Code's default editor association, so any custom editor you've set for the file type is honored."
         },
         "ozCalendar.externalExtensions": {
           "type": "string",

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.4.5] - 2026-06-13
+
+### Changed
+- `openMarkdownIn: editor` now opens files through VS Code's **default editor association** (`vscode.open`) instead of forcing the built-in text editor. Custom editors registered for a file type (e.g. an installed Markdown editor extension) are honored, and any future extension association is respected automatically. `/grep` line jumps still apply when a file opens in a text editor; open failures fall back to the OS default app.
+
+## [1.4.4] - 2026-05-28
+
+### Added
+- **One-click gogcli setup** from the sidebar. When gogcli is missing the panel now offers three actions instead of a bare GitHub link:
+  - `🚀 자동 설치` — downloads the matching release asset from [openclaw/gogcli](https://github.com/openclaw/gogcli) for the current platform/arch, extracts it, drops `gog`/`gog.exe` into a standard location, and prompts to run `gog auth login`. Backed by the new command `ozCalendar.installGogcli`.
+  - `📁 경로 지정` — opens a file picker so users who already have gogcli installed elsewhere can register it. Backed by the new command `ozCalendar.setGogPath` and the new setting `ozCalendar.gogPath`.
+  - `📖 가이드` — opens the upstream gogcli README.
+- New setting `ozCalendar.gogPath` (string, empty by default). When set, overrides automatic binary detection.
+- Configuration change listener: editing `ozCalendar.gogPath` invalidates the gogcli detection cache and refreshes the sidebar immediately.
+
+### Changed
+- gogcli binary detection is now dynamic (`resolveGogPath()`), checking `ozCalendar.gogPath` first, then a per-platform candidate list (`/opt/homebrew/bin`, `/usr/local/bin`, `~/.gogcli/bin`, `%LOCALAPPDATA%\gogcli\gog.exe`). Network calls cap redirects and time out, and release asset names are validated before download.
+
+### Fixed
+- Upstream gogcli repository URL corrected to `openclaw/gogcli` across README, INSTALL guide, and the sidebar guide link (was a placeholder).
+
 ## [1.4.3] - 2026-05-07
 
 ### Added
